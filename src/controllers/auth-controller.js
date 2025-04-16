@@ -116,8 +116,7 @@ export const resendVerificationCode = async (req, res) => {
 };
 
 // Login user
-export const login = async (req, res) => {
-  try {
+export const login = catchAsyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     // Find user by email
@@ -158,18 +157,9 @@ export const login = async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
-  }
-};
+});
 
 // Get current user profile
-export const getCurrentUser = async (req, res) => {
-  try {
+export const getCurrentUser = catchAsyncHandler(async (req, res) => {
     res.status(200).json({ user: req.user });
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ message: 'Server error while fetching profile' });
-  }
-};
+});
