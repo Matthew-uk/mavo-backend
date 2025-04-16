@@ -1,42 +1,9 @@
 import User from '../models/user-model.js';
+import { updateOne } from '../utils/crudHandler.js';
+import catchAsyncHandler from '../utils/catchAsyncHandler.js';
 
 // Update user profile
-export const updateProfile = async (req, res) => {
-  try {
-    const { firstName, lastName, address, profileImage } = req.body;
-
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Update fields if provided
-    if (firstName) user.firstName = firstName;
-    if (lastName) user.lastName = lastName;
-    if (address) user.address = address;
-    if (profileImage) user.profileImage = profileImage;
-
-    await user.save();
-
-    res.status(200).json({
-      message: 'Profile updated successfully',
-      user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        address: user.address,
-        role: user.role,
-        profileImage: user.profileImage,
-      },
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ message: 'Server error while updating profile' });
-  }
-};
+export const updateProfile = updateOne(User)
 
 // Change password
 export const changePassword = async (req, res) => {

@@ -1,44 +1,31 @@
 import User from '../models/user-model.js';
 import { generateToken, generateVerificationCode } from '../utils/helpers.js';
 import { sendVerificationEmail } from '../services/email-service.js';
+import AppError from '../utils/appError.js';
+import catchAsyncHandler from '../utils/catchAsyncHandler.js';
 
 // Register new user
-export const register = async (req, res) => {
-  try {
-    const { firstName, lastName, email, password, phoneNumber, address, role } =
-      req.body;
+export const register = catchAsyncHandler(async (req, res, next) => {
+    const { email, role } = req.body;
 
+    
+    
     // Check if user already exists
     const existingUser = await User.findOne({ email });
-
+    
     if (existingUser) {
-      return res.status(400).json({
-        message: 'User with this email already exists',
-      });
+      return next(new AppError('User already exists', 400))
     }
-
+    
     // Generate verification code
     const verificationCode = generateVerificationCode();
-    const codeExpiresAt = new Date();
-    codeExpiresAt.setMinutes(codeExpiresAt.getMinutes() + 10); // Code expires in 10 minutes
-
+    
     // Create new user
-    const newUser = new User({
-      firstName,
-      lastName,
-      email,
-      password,
-      phoneNumber,
-      address,
-      role,
-      verificationCode: {
-        code: verificationCode,
-        expiresAt: codeExpiresAt,
-      },
-    });
+    const newUser = await User.create({...req.body, verificationCode})
+    console.log(newUser)
+    
 
-    await newUser.save();
-
+    
     // Send verification email
     await sendVerificationEmail(email, verificationCode);
 
@@ -47,43 +34,30 @@ export const register = async (req, res) => {
         'User registered successfully. Verification code sent to your email.',
       userId: newUser._id,
     });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error during registration' });
-  }
-};
+});
 
 // Verify email with code
-export const verifyEmail = async (req, res) => {
-  try {
+export const verifyEmail = catchAsyncHandler(async (req, res, next) => {
     const { userId, code } = req.body;
 
-    const user = await User.findById(userId);
+    // Find and update in one go if user exists, is not verified, and code matches and isn't expired
+    const user = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        isVerified: false,
+        "verificationCode.code": code,
+        "verificationCode.expiresAt": { $gt: new Date() },
+      },
+      {
+        $set: { isVerified: true },
+        $unset: { verificationCode: 1 },
+      },
+      { new: true }
+    );
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return next(new AppError("Invalid or expired verification details", 400));
     }
-
-    if (user.isVerified) {
-      return res.status(400).json({ message: 'User is already verified' });
-    }
-
-    if (!user.verificationCode || !user.verificationCode.code) {
-      return res.status(400).json({ message: 'No verification code found' });
-    }
-
-    if (new Date() > user.verificationCode.expiresAt) {
-      return res.status(400).json({ message: 'Verification code has expired' });
-    }
-
-    if (user.verificationCode.code !== code) {
-      return res.status(400).json({ message: 'Invalid verification code' });
-    }
-
-    // Mark user as verified and remove verification code
-    user.isVerified = true;
-    user.verificationCode = undefined;
-    await user.save();
 
     // Generate token
     const token = generateToken(user._id);
@@ -100,11 +74,7 @@ export const verifyEmail = async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
-    console.error('Verification error:', error);
-    res.status(500).json({ message: 'Server error during verification' });
-  }
-};
+});
 
 // Resend verification code
 export const resendVerificationCode = async (req, res) => {

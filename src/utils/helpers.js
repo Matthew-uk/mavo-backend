@@ -9,7 +9,11 @@ export const generateToken = (userId) => {
 
 // Generate random verification code
 export const generateVerificationCode = () => {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  const now = new Date();
+const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
+  const code = Math.floor(1000 + Math.random() * 9000).toString();
+
+  return { code, expiresAt}
 };
 
 // Format error response

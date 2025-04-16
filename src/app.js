@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth-routes.js';
 import userRoutes from './routes/user-routes.js';
+import globalErrorHandler from './controllers/error-contrroller.js';
+import morgan from 'morgan'
+import AppError from './utils/appError.js';
 
 const app = express();
 
 // Middleware
 app.use(cors());
+app.use(morgan("dev"));
 app.use(express.json());
 
 // Routes
@@ -18,13 +22,11 @@ app.get('/', (req, res) => {
   res.send('Mavo API is running');
 });
 
+// app.all("*", (req, res, next) => {
+//   next(new AppError("Route does not exist", 404))
+// })
+
 // Global error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: 'An unexpected error occurred',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-  });
-});
+app.use(globalErrorHandler);
 
 export default app;

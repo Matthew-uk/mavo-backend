@@ -1,29 +1,9 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import User from './user-model';
 
-const userSchema = new mongoose.Schema(
+const driverSchema = new mongoose.Schema(
   {
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-      lowercase: true,
-      match: [/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/, 'Please provide a valid email address.'] 
-    },
-    role: {
-      type: String,
-      enum: ['car_owner', 'driver'],
-      required: true,
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    verificationCode: {
-      code: String,
-      expiresAt: Date,
-    },
     firstName: {
       type: String,
       //   required: true,
@@ -52,10 +32,11 @@ const userSchema = new mongoose.Schema(
       type: String,
     }
   },
-  { timestamps: true, discriminatorKey: "role", collection: "users" },
+  { timestamps: true },
 );
 
-userSchema.pre('save', async function (next) {
+// Hash password before saving
+driverSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
   try {
@@ -68,10 +49,10 @@ userSchema.pre('save', async function (next) {
 });
 
 // Method to compare passwords
-userSchema.methods.comparePassword = async function (candidatePassword) {
+driverSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
+const Driver = User.discriminator('driver', driverSchema);
 
-export default User;
+export default Driver;
