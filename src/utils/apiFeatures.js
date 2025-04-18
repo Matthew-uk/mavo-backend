@@ -1,67 +1,106 @@
 class APIFeatures {
     constructor(query, queryString) {
-        this.query = query;
-        this.queryString = queryString;
-        this.page = 1;
-        this.docs_per_page = 10;
+      this.query = query;
+      this.queryString = queryString;
+      this.page = 1;
+      this.docs_per_page = 10;
     }
-
+  
+    // Helper to cast types and split arrays when needed
+    static _cast(op, val) {
+      // Array operators expect a list
+      const arrayOps = new Set(['in','nin','all']);
+      if (arrayOps.has(op) && typeof val === 'string') {
+        return val.split(',').map(v => APIFeatures._cast(null, v));
+      }
+  
+      // mod expects [divisor, remainder]
+      if (op === 'mod' && typeof val === 'string') {
+        return val.split(',').map(v => +v);
+      }
+  
+      // Basic casting
+      if (val === 'true') return true;
+      if (val === 'false') return false;
+      if (val === 'null') return null;
+      if (!isNaN(val) && val !== '') return +val;
+      return val;
+    }
+  
     filter() {
-        const queryObj = { ...this.queryString };
-        const excludedFields = ['page', 'sort', 'limit', 'fields', 'populate'];
-        excludedFields.forEach(el => delete queryObj[el]);
-
-        let queryStr = JSON.stringify(queryObj);
-        queryStr = queryStr.replace(/\b(gte|gt|lte|lt|in|nin|ne|eq|regex|exists|all|size|mod|options)\b/g, match => `$${match}`);
-        this.query = this.query.find(JSON.parse(queryStr));
-        return this;
+      const excluded = ['page','sort','limit','fields','populate'];
+      const criteria = {};
+  
+      Object.entries(this.queryString).forEach(([key, val]) => {
+        if (excluded.includes(key)) return;
+  
+        // operator style: ?field[op]=value
+        if (val !== null && typeof val === 'object') {
+          const sub = {};
+          Object.entries(val).forEach(([op, raw]) => {
+            const v = APIFeatures._cast(op, raw);
+  
+            if (op === 'eq') {
+              // eq=undefined → missing field
+              if (raw === 'undefined') sub.$exists = false;
+              else sub.$eq = v;
+            } else {
+              sub[`$${op}`] = v;
+            }
+          });
+          criteria[key] = sub;
+        }
+        // simple equality: ?field=value
+        else {
+          criteria[key] = APIFeatures._cast(null, val);
+        }
+      });
+  
+      this.query = this.query.find(criteria);
+      return this;
     }
-
+  
     sort() {
-        if (this.queryString.sort) {
-            const sortBy = this.queryString.sort.split(',').join(' ');
-            this.query = this.query.sort(sortBy);
-        } else {
-            this.query = this.query.sort('-createdAt');
-        }
-        return this;
+      if (this.queryString.sort) {
+        this.query = this.query.sort(this.queryString.sort.split(',').join(' '));
+      } else {
+        this.query = this.query.sort('-createdAt');
+      }
+      return this;
     }
-
+  
     limitFields() {
-        if (this.queryString.fields) {
-            const fields = this.queryString.fields.split(',').join(' ');
-            this.query = this.query.select(fields);
-        } else {
-            this.query = this.query.select('-__v -reviews -updatedAt');
-        }
-        return this;
+      if (this.queryString.fields) {
+        this.query = this.query.select(this.queryString.fields.split(',').join(' '));
+      } else {
+        this.query = this.query.select('-__v -updatedAt');
+      }
+      return this;
     }
-
+  
     paginate() {
-        const page = this.queryString.page * 1 || 1;
-        const limit = this.queryString.limit * 1 || 10;
-        const skip = (page - 1) * limit;
-        this.page = page;
-        this.docs_per_page = limit;
-        this.query = this.query.skip(skip).limit(limit);
-        return this;
+      const page = this.queryString.page * 1 || 1;
+      const limit = this.queryString.limit * 1 || 10;
+      this.page = page;
+      this.docs_per_page = limit;
+      this.query = this.query.skip((page - 1) * limit).limit(limit);
+      return this;
     }
-
+  
     populate() {
-        if (this.queryString.populate) {
-            const populateFields = this.queryString.populate.split(',').join(' ');
-            this.query = this.query.populate(populateFields);
-        }
-        return this;
+      if (this.queryString.populate) {
+        this.query = this.query.populate(this.queryString.populate.split(',').join(' '));
+      }
+      return this;
     }
-
+  
     metaData() {
-        return { 
-            page: this.page, 
-            docs_per_page: this.docs_per_page, 
-            total_no_of_documents: this.total_no_of_documents 
-        };
+      return {
+        page: this.page,
+        docs_per_page: this.docs_per_page
+      };
     }
-}
-
-export default APIFeatures;
+  }
+  
+  export default APIFeatures;
+  

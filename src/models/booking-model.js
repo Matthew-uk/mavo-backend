@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema({
   startDate: {
     type: Date,
   },
-  frequency: {
+  interval: {
     type: String,
     enum: ['monthly', 'bi-monthly', 'annually'],
   },
@@ -39,36 +39,44 @@ const bookingSchema = new mongoose.Schema({
     type: [
       {
         clockIn: Date,
-        clockout: Date,
+        clockOut: Date,
         date: Date,
       },
-    ], // or whatever type you need
-    default: function () {
-        const days = getIntervalLengthInDays(this.startDate, this.interval);
-        return Array.from({ length: days }, () => 0);
-      }
-      
+    ],
+    validate: {
+      validator: function (val) {
+        // Only run if both dates exist
+        if (!this.startDate || !this.interval) return true;
+        const maxLength = getIntervalLengthInDays(this.startDate, this.interval);
+        return val.length <= maxLength;
+      },
+      message: 'Days array exceeds maximum allowed length based on interval.',
+    },
   },
 });
 
-bookingSchema.pre("save",async function (next) {
+bookingSchema.pre("save", async function (next) {
     if (this.isModified("driver")) {
-        const driver = User.findOneAndUpdate({_id: this.driver, role: "driver"}, {booking: this._id}, {
+        console.log("driver")
+        const driver = await User.findOneAndUpdate({_id: this.driver, role: "driver", booking: { $exists: false } }, {booking: this._id}, {
             runValidators: true, new: true
         } )
-
+        
         if(!driver) {
             throw new mongoose.Error("Driver does not exist")
         }
     }
     if (this.isModified("owner")) {
-        const owner = User.findOneAndUpdate({_id: this.owner, role: "car_owner"}, {booking: this._id}, {
+        console.log("owner")
+        const owner = await User.findOneAndUpdate({_id: this.owner, role: "car_owner", booking: { $exists: false } }, {booking: this._id}, {
             runValidators: true, new: true
         } )
 
         if(!owner) {
             throw new mongoose.Error("Owner does not exist")
         }
+
+        console.log(owner)
     }
 
     next()
@@ -92,7 +100,7 @@ bookingSchema.methods.clockOut = function () {
   );
   if (!dayEntry) throw new Error('Date not found in days array');
 
-  dayEntry.clockout = new Date();
+  dayEntry.clockOut = new Date();
 };
 
 // find code to automatically run a function at a specific date

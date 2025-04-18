@@ -50,7 +50,7 @@ export const verifyEmail = catchAsyncHandler(async (req, res, next) => {
       },
       {
         $set: { isVerified: true },
-        $unset: { verificationCode: 1 },
+        $unset: { verificationCode: 1, expiresAt: 1 },
       },
       { new: true }
     );

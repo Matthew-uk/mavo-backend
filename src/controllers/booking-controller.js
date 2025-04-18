@@ -49,23 +49,23 @@ export const driverClockOut = catchAsyncHandler(async (req, res, next) => {
       await booking.save();
     
       res.status(200).json({
-        message: 'Successfully clocked in today',
+        message: 'Successfully clocked out today',
       });
 });
 
 export const bookDriver = catchAsyncHandler(async (req, res, next) => {
     const {driver} = req.body
 
-    const booking = await Booking.findByIdAndUpdate(req.body.bookingId, {
-        driver, status: "confirmed"
-    }, {
-        runValidators: true,
-        new: true
-    })
+    const booking = await Booking.findById(req.body.bookingId)
 
     if (!booking) {
-        return next(new AppError("Booking does not exist"))
+        return next(new AppError("Booking does not exist", 404))
     }
+
+    booking.driver = driver
+    booking.status = "confirmed"
+
+    await booking.save()
 
     res.status(200).json({
         message: "Driver successfully booked"
