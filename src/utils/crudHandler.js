@@ -43,6 +43,8 @@ export const getOne = (Model) =>
 
 export const createNew = (Model, options = {}) =>
   catchAsyncHandler(async (req, res, next) => {
+    console.log(req.body)
+
     // Handle file uploads if specified
     if (options.fileField && req.file) {
       req.body[options.fileField] = req.file.path.replace("public/", ""); // Store relative path

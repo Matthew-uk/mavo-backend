@@ -1,80 +1,69 @@
 import nodemailer from 'nodemailer';
-import emailConfig from '../config/email.js';
+import dotenv from "dotenv"
+import Mailgen from 'mailgen';
 
-// In a production environment, you would use a real email service
-// This is a development setup using Ethereal (fake SMTP service)
-let transporter;
+dotenv.config()
 
-// Initialize email transporter
-const initTransporter = async () => {
-  if (process.env.NODE_ENV === 'production') {
-    // Production email service configuration
-    transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: process.env.EMAIL_SECURE === 'true',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
-  } else {
-    // For development, use Ethereal (fake SMTP service)
-    const testAccount = await nodemailer.createTestAccount();
+const BASE_URL =
+  process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
 
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-  }
+const config = {
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
 };
 
-// Initialize the transporter
-initTransporter().catch(console.error);
+const transporter = nodemailer.createTransport(config);
 
-// Send verification email
-export const sendVerificationEmail = async (to, code) => {
-  try {
-    if (!transporter) {
-      await initTransporter();
-    }
+// ✨ Setup Mailgen
+const mailGenerator = new Mailgen({
+  theme: 'default',
+  product: {
+    name: 'Mavo',
+    link: BASE_URL,
+    copyright: `© ${new Date().getFullYear()} Mavo. All rights reserved.`,
+  },
+});
 
-    const mailOptions = {
-      from: emailConfig.from,
-      to,
-      subject: 'Verify Your Mavo Account',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #0f5132;">Verify Your Mavo Account</h2>
-          <p>Thank you for registering with Mavo. Please use the following code to verify your account:</p>
-          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
-            ${code}
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you did not request this verification, please ignore this email.</p>
-          <p>Best regards,<br>The Mavo Team</p>
-        </div>
-      `,
-    };
+// ✅ Send verification email with Mailgen
+export const sendVerificationEmail = (to, name, code) => {
+  const email = {
+    body: {
+      greeting: 'Hello',
+      signature: 'Best regards',
+      intro: 'Thanks for signing up with Mavo! To complete your registration, please use the verification code below:',
+      table: {
+        data: [
+          {
+            'Verification Code': code,
+          },
+        ],
+        columns: {
+          customWidth: {
+            'Verification Code': '200px',
+          },
+          customAlignment: {
+            'Verification Code': 'center',
+          },
+        },
+      },
+      outro: 'This code will expire in 20 minutes. If you did not request this, you can safely ignore this message.',
+    },
+  };
+  
+  // Generate the HTML and plaintext versions
+  const emailBody = mailGenerator.generate(email);
+  const textBody = mailGenerator.generatePlaintext(email);
 
-    const info = await transporter.sendMail(mailOptions);
+  const msg = {
+    from: '"support@mavo.com" <mavoinc.>',
+    to,
+    subject: 'Verify Your Mavo Account',
+    html: emailBody,
+    text: textBody,
+  };
 
-    if (process.env.NODE_ENV !== 'production') {
-      // Log preview URL for development (Ethereal)
-      console.log(
-        'Verification email preview URL: %s',
-        nodemailer.getTestMessageUrl(info),
-      );
-    }
-
-    return info;
-  } catch (error) {
-    console.error('Error sending verification email:', error);
-    throw error;
-  }
+  return transporter.sendMail(msg);
 };

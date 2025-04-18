@@ -27,7 +27,7 @@ export const register = catchAsyncHandler(async (req, res, next) => {
 
     
     // Send verification email
-    await sendVerificationEmail(email, verificationCode);
+    await sendVerificationEmail(email, newUser.firstName, verificationCode.code);
 
     res.status(201).json({
       message:
@@ -77,8 +77,7 @@ export const verifyEmail = catchAsyncHandler(async (req, res, next) => {
 });
 
 // Resend verification code
-export const resendVerificationCode = async (req, res) => {
-  try {
+export const resendVerificationCode = catchAsyncHandler(async (req, res) => {
     const { userId } = req.body;
 
     const user = await User.findById(userId);
@@ -109,18 +108,17 @@ export const resendVerificationCode = async (req, res) => {
     res.status(200).json({
       message: 'Verification code resent successfully',
     });
-  } catch (error) {
-    console.error('Resend code error:', error);
-    res.status(500).json({ message: 'Server error while resending code' });
-  }
-};
+});
 
 // Login user
 export const login = catchAsyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
+    console.log(email)
+    
     // Find user by email
     const user = await User.findOne({ email });
+    console.log(user)
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
@@ -159,7 +157,32 @@ export const login = catchAsyncHandler(async (req, res) => {
     });
 });
 
+
 // Get current user profile
 export const getCurrentUser = catchAsyncHandler(async (req, res) => {
-    res.status(200).json({ user: req.user });
+  res.status(200).json({ user: req.user });
 });
+
+  // Change password
+  export const changePassword = catchAsyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+  
+    const user = await User.findById(req.user._id);
+  
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+  
+    // Verify current password
+    const isPasswordValid = await user.comparePassword(currentPassword);
+  
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+  
+    // Update password
+    user.password = newPassword;
+    await user.save();
+  
+    res.status(200).json({ message: 'Password changed successfully' });
+  });

@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['car_owner', 'driver'],
+      enum: ['car_owner', 'driver', 'admin'],
       required: true,
     },
     isVerified: {
@@ -50,9 +50,17 @@ const userSchema = new mongoose.Schema(
     },
     profileImage: {
       type: String,
-    }
+    },
+    booking: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Booking"
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  { timestamps: true, discriminatorKey: "role", collection: "users" },
+  { timestamps: true},
 );
 
 userSchema.pre('save', async function (next) {

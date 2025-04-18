@@ -5,6 +5,7 @@ import {
   resendVerificationCode,
   login,
   getCurrentUser,
+  changePassword,
 } from '../controllers/auth-controller.js';
 import { authenticate } from '../middleware/auth-middleware.js';
 
@@ -24,5 +25,9 @@ router.post('/login', login);
 
 // Get current user profile
 router.get('/me', authenticate, getCurrentUser);
+
+// Change password
+router.put('/change-password', authenticate, changePassword);
+
 
 export default router;
