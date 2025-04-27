@@ -19,10 +19,10 @@ export const generateToken = (userId) => {
 // Generate random verification code
 export const generateVerificationCode = () => {
   const now = new Date();
-const expiresAt = new Date(now.getTime() + 20 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + 20 * 60 * 1000);
   const code = Math.floor(1000 + Math.random() * 9000).toString();
 
-  return { code, expiresAt}
+  return { code, expiresAt };
 };
 
 // Format error response
@@ -38,7 +38,7 @@ export function getIntervalLengthInDays(date, interval = 'monthly') {
   const day = start.getDate();
 
   let addMonths = 1;
-  if (interval === 'bi-monthly') addMonths = 2;
+  if (interval === 'bi-annually') addMonths = 6;
   else if (interval === 'annually') addMonths = 12;
 
   let targetMonth = start.getMonth() + addMonths;
@@ -56,5 +56,5 @@ export function getIntervalLengthInDays(date, interval = 'monthly') {
   const msPerDay = 1000 * 60 * 60 * 24;
   const diffMs = target - start;
 
-  return Math.ceil(diffMs / msPerDay);
+  return { no_of_days: Math.ceil(diffMs / msPerDay), date: target };
 }

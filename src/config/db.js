@@ -1,7 +1,14 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// These two lines are needed because you're using "type": "module"
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env correctly no matter where you run from
+dotenv.config({ path: path.resolve(__dirname, './../../.env') });
 
 const connectDB = async () => {
   try {

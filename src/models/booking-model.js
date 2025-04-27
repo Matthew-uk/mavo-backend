@@ -6,7 +6,7 @@ const bookingSchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, "A booking request must have a car owner"]
+    required: [true, 'A booking request must have a car owner'],
   },
   driver: {
     type: mongoose.Schema.Types.ObjectId,
@@ -19,9 +19,15 @@ const bookingSchema = new mongoose.Schema({
   startDate: {
     type: Date,
   },
+  endDate: {
+    type: Date,
+    default: function () {
+      return getIntervalLengthInDays(this.startDate, this.interval).date;
+    },
+  },
   interval: {
     type: String,
-    enum: ['monthly', 'bi-monthly', 'annually'],
+    enum: ['monthly', 'bi-annually', 'annually'],
   },
   pricing: {
     type: String,
@@ -33,7 +39,7 @@ const bookingSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'concelled', 'completed'],
-    default: "pending"
+    default: 'pending',
   },
   days: {
     type: [
@@ -47,40 +53,58 @@ const bookingSchema = new mongoose.Schema({
       validator: function (val) {
         // Only run if both dates exist
         if (!this.startDate || !this.interval) return true;
-        const maxLength = getIntervalLengthInDays(this.startDate, this.interval);
-        return val.length <= maxLength;
+        const maxLength = getIntervalLengthInDays(
+          this.startDate,
+          this.interval,
+        );
+        return val.length <= maxLength.no_of_days;
       },
       message: 'Days array exceeds maximum allowed length based on interval.',
     },
   },
+  transactionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+    required: true,
+  },
 });
 
-bookingSchema.pre("save", async function (next) {
-    if (this.isModified("driver")) {
-        console.log("driver")
-        const driver = await User.findOneAndUpdate({_id: this.driver, role: "driver", booking: { $exists: false } }, {booking: this._id}, {
-            runValidators: true, new: true
-        } )
-        
-        if(!driver) {
-            throw new mongoose.Error("Driver does not exist")
-        }
+bookingSchema.pre('save', async function (next) {
+  if (this.isModified('driver')) {
+    console.log('driver');
+    const driver = await User.findOneAndUpdate(
+      { _id: this.driver, role: 'driver', booking: { $exists: false } },
+      { booking: this._id },
+      {
+        runValidators: true,
+        new: true,
+      },
+    );
+
+    if (!driver) {
+      throw new mongoose.Error('Driver does not exist');
     }
-    if (this.isModified("owner")) {
-        console.log("owner")
-        const owner = await User.findOneAndUpdate({_id: this.owner, role: "car_owner", booking: { $exists: false } }, {booking: this._id}, {
-            runValidators: true, new: true
-        } )
+  }
+  if (this.isModified('owner')) {
+    console.log('owner');
+    const owner = await User.findOneAndUpdate(
+      { _id: this.owner, role: 'car_owner', booking: { $exists: false } },
+      { booking: this._id },
+      {
+        runValidators: true,
+        new: true,
+      },
+    );
 
-        if(!owner) {
-            throw new mongoose.Error("Owner does not exist")
-        }
-
-        console.log(owner)
+    if (!owner) {
+      throw new mongoose.Error('Owner does not exist');
     }
 
-    next()
-})
+    console.log(owner);
+  }
+
+  next();
+});
 
 bookingSchema.methods.clockIn = function () {
   const today = new Date();
